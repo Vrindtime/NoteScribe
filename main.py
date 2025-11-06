@@ -1,10 +1,17 @@
 from schema import TextForm
 from helper import *
+from workers import WorkerEntrypoint
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from piper.voice import PiperVoice, SynthesisConfig
 from fastapi.middleware.cors import CORSMiddleware
+
+class Default(WorkerEntrypoint):
+    async def fetch(self, request):
+        import asgi
+
+        return await asgi.fetch(app, request, self.env)
 
 app = FastAPI()
 app.add_middleware(
