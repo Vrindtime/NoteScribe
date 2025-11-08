@@ -34,9 +34,8 @@ jobs:
       # ---- 2. Build clean ZIP (app + JSON + deps) ----
       - name: Copy application files into deploy and ZIP
         run: |
-          #copy app code and json
-          cp -r app/* deploy/app/
-          cp en_US-lessac-medium.onnx.json deploy/app/
+          #copy app files to deploy folder
+          cp app/* deploy/
 
           # Create final ZIP package from the 'deploy' folder
           cd deploy
