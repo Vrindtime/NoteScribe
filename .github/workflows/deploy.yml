@@ -58,7 +58,7 @@ jobs:
       # -------------------------------------------------
       - name: Copy application code
         run: |
-          cp main.py helper.py schema.py en_US-lessac-medium.onnx.json deploy/
+          cp app/main.py app/helper.py app/schema.py app/en_US-lessac-medium.onnx.json deploy/
 
       # -------------------------------------------------
       # 7. Strip bloat (dist‑info, __pycache__, tests, .so.debug)
