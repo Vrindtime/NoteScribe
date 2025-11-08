@@ -1,4 +1,4 @@
-name: Note Scrible
+name: Deploy Note‑Scribe
 
 on:
   push:
@@ -9,57 +9,99 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write   # for AWS OIDC
+      id-token: write          # OIDC for AWS
 
     steps:
-      - name: Checkout
+      # -------------------------------------------------
+      # 1. Checkout code
+      # -------------------------------------------------
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ---- 1. Install Python deps into root ----
+      # -------------------------------------------------
+      # 2. Set up Python 3.11
+      # -------------------------------------------------
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Create deployment structure
+      # -------------------------------------------------
+      # 3. Create clean deployment folder
+      # -------------------------------------------------
+      - name: Prepare deployment folder
         run: |
-          # Create a 'deploy' folder and the 'app' subfolder inside it
-          mkdir -p deploy/app
+          mkdir -p deploy
 
-      - name: Install dependencies
+      # -------------------------------------------------
+      # 4. Install *all* pure‑Python deps (fastapi, mangum, etc.)
+      # -------------------------------------------------
+      - name: Install Python dependencies
         run: |
-          pip install -r requirements.txt -t deploy
+          pip install -r requirements.txt -t deploy --no-cache-dir
 
-      - name: Install Onnxruntime for Amazon Linux
+      # -------------------------------------------------
+      # 5. Install **onnxruntime** built for Amazon Linux 2
+      #     (manylinux2014 = glibc ≤ 2.26 → Lambda‑compatible)
+      # -------------------------------------------------
+      - name: Install onnxruntime (Lambda‑compatible)
         run: |
-          pip install onnxruntime==1.16.0 --platform manylinux2014_x86_64 --only-binary=:all: --target deploy
+          pip install \
+            onnxruntime==1.16.0 \
+            --platform manylinux2014_x86_64 \
+            --only-binary=:all: \
+            --target deploy \
+            --no-cache-dir
 
-      # ---- 2. Build clean ZIP (app + JSON + deps) ----
-      - name: Copy application files into deploy and ZIP
+      # -------------------------------------------------
+      # 6. Copy source files + JSON config
+      # -------------------------------------------------
+      - name: Copy application code
         run: |
-          #copy app files to deploy folder
-          cp -r app/* deploy/
+          cp main.py helper.py schema.py en_US-lessac-medium.onnx.json deploy/
 
-          # Create final ZIP package from the 'deploy' folder
+      # -------------------------------------------------
+      # 7. Strip bloat (dist‑info, __pycache__, tests, .so.debug)
+      # -------------------------------------------------
+      - name: Clean up unnecessary files
+        run: |
           cd deploy
-          zip -r9 ../note-scribe-deploy.zip .
+          rm -rf ./*.dist-info */*.dist-info
+          find . -type d -name "__pycache__" -exec rm -rf {} +
+          find . -type f -name "*.pyc" -delete
+          rm -rf */tests */*.so.debug
+
+      # -------------------------------------------------
+      # 8. Create final ZIP (max compression)
+      # -------------------------------------------------
+      - name: Create deployment package
+        run: |
+          cd deploy
+          zip -r9 ../note-scribe-deploy.zip . > /dev/null
           cd ..
+          echo "ZIP size:"
           ls -lh note-scribe-deploy.zip
 
-      # ---- 3. Configure AWS credentials via OIDC ----
-      - name: Configure AWS Credentials
+      # -------------------------------------------------
+      # 9. Configure AWS credentials via OIDC
+      # -------------------------------------------------
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
           aws-region: ap-south-1
 
-      # ---- 4. Upload ZIP to S3 ----
+      # -------------------------------------------------
+      # 10. Upload ZIP to S3
+      # -------------------------------------------------
       - name: Upload to S3
         run: |
           aws s3 cp note-scribe-deploy.zip s3://note-scribe/
 
-      # ---- 5. Update Lambda function code ----
-      - name: Update Lambda
+      # -------------------------------------------------
+      # 11. Update Lambda function
+      # -------------------------------------------------
+      - name: Update Lambda function
         run: |
           aws lambda update-function-code \
             --function-name note-scribe \
