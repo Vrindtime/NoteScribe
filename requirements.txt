@@ -1,5 +1,5 @@
 fastapi
 mangum
 boto3
-piper-tts
-pydantic
+# piper-tts
+# pydantic
