@@ -20,6 +20,11 @@ from fastapi.responses import StreamingResponse
 from piper.voice import PiperVoice, SynthesisConfig
 from fastapi.middleware.cors import CORSMiddleware
 
+# ----------- TESTING -------------
+import sys
+print("Python path:", sys.path)
+print("ONNX files:", os.listdir("onnxruntime/capi")[:5])
+
 
 MODEL_PATH = "/tmp/en_US-lessac-medium.onnx"
 MODEL_JSON_PATH = "en_US-lessac-medium.onnx.json"
