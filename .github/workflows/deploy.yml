@@ -35,7 +35,7 @@ jobs:
       - name: Copy application files into deploy and ZIP
         run: |
           #copy app files to deploy folder
-          cp app/* deploy/
+          cp -r app/* deploy/
 
           # Create final ZIP package from the 'deploy' folder
           cd deploy
