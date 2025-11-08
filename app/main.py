@@ -145,4 +145,8 @@ async def tts(payload: TextForm):
     del master_io
     return response
 
+@app.get('/')
+def ping():
+    return {"status":'Pinged Successfully'}
+
 handler = Mangum(app,lifespan="off")

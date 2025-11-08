@@ -33,12 +33,7 @@ jobs:
 
           #  Install dependencies, forcing installation of pre-built wheels 
           #  compatible with Amazon Linux (Lambda's OS) for Python 3.12 (cp312).
-          pip install \
-            --platform manylinux2014_x86_64 \
-            --python-version 312 \ # Use '312' for cp312 tag
-            --only-binary=:all: \
-            --target deploy \      # Install directly into the folder to be zipped
-            -r requirements.txt
+          pip install onnxruntime==1.16.3 --platform manylinux2014_x86_64 --only-binary=:all: --target deploy
 
       # ---- 2. Build clean ZIP (app + JSON + deps) ----
       - name: Copy application files into deploy and ZIP
