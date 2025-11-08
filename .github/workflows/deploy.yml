@@ -19,7 +19,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.11'
 
       - name: Create deployment structure
         run: |
@@ -28,11 +28,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # Install dependencies into the 'deploy' folder 
           pip install -r requirements.txt -t deploy
 
-          #  Install dependencies, forcing installation of pre-built wheels 
-          #  compatible with Amazon Linux (Lambda's OS) for Python 3.12 (cp312).
+      - name: Install Onnxruntime for Amazon Linux
+        run: |
           pip install onnxruntime==1.16.0 --platform manylinux2014_x86_64 --only-binary=:all: --target deploy
 
       # ---- 2. Build clean ZIP (app + JSON + deps) ----
