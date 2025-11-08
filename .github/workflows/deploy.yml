@@ -21,17 +21,24 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Create deployment structure
+        run: |
+          # Create a 'deploy' folder and the 'app' subfolder inside it
+          mkdir -p deploy/app
+
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt -t .
+          # Install dependencies into the 'deploy' folder 
+          pip install -r requirements.txt -t deploy
 
       # ---- 2. Build clean ZIP (app + JSON + deps) ----
-      - name: Create deployment package
+      - name: Copy application files into deploy and ZIP
         run: |
-          mkdir -p deploy/app
+          #copy app code and json
           cp -r app/* deploy/app/
           cp en_US-lessac-medium.onnx.json deploy/app/
-          cp -r *.py deploy/ 2>/dev/null || true
+
+          # Create final ZIP package from the 'deploy' folder
           cd deploy
           zip -r9 ../note-scribe-deploy.zip .
           cd ..
@@ -41,7 +48,7 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::YOUR_ACCOUNT_ID:role/GitHubActionsLambdaRole
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
           aws-region: ap-south-1
 
       # ---- 4. Upload ZIP to S3 ----
@@ -57,7 +64,3 @@ jobs:
             --s3-bucket note-scribe-bucket \
             --s3-key note-scribe-deploy.zip \
             --publish
-
-      # ---- 6. (Optional) Invalidate CloudFront if you have one ----
-      # - name: Invalidate CloudFront
-      #   run: aws cloudfront create-invalidation --distribution-id XXX --paths "/*"
