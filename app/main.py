@@ -145,7 +145,7 @@ async def tts(payload: TextForm):
     del master_io
     return response
 
-@app.get('/')
+@app.get('/ping')
 def ping():
     return {"status":'Pinged Successfully'}
 
