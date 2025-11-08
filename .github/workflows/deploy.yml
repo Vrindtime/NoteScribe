@@ -60,6 +60,6 @@ jobs:
         run: |
           aws lambda update-function-code \
             --function-name note-scribe \
-            --s3-bucket note-scribe-bucket \
+            --s3-bucket note-scribe \
             --s3-key note-scribe-deploy.zip \
             --publish
