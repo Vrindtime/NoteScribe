@@ -1,6 +1,6 @@
 fastapi
 mangum
 boto3
-onnxruntime
+onnxruntime==1.16.3
 piper-tts
 pydantic
