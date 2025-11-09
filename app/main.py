@@ -1,6 +1,7 @@
 from mangum import Mangum
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI
+# , HTTPException, Request
+# from fastapi.middleware.cors import CORSMiddleware
 
 # import wave
 # import onnxruntime as ort
@@ -40,13 +41,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Note Scribe")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
 
 # # === Lazy-load model on first request ===
 # def ensure_model_loaded() -> PiperVoice:
@@ -153,6 +154,6 @@ app.add_middleware(
 
 @app.get('/ping')
 def ping():
-    return {"status":'Pinged Successfully'}
+    return {"message":'Pinged Successfully'}
 
-handler = Mangum(app,lifespan="off")
+handler = Mangum(app)
