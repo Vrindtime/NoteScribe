@@ -38,7 +38,9 @@ jobs:
       # -------------------------------------------------
       - name: Install Python dependencies
         run: |
-          pip install -r requirements.txt -t deploy --no-cache-dir
+          pip install -r requirements.txt -t deploy \
+          --platform manylinux2014_x86_64 \
+          --only-binary=:all:
 
       # -------------------------------------------------
       # 5. Install **onnxruntime** built for Amazon Linux 2
