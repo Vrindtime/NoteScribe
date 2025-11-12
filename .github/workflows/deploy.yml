@@ -46,21 +46,21 @@ jobs:
       # 5. Install **onnxruntime** built for Amazon Linux 2
       #     (manylinux2014 = glibc ≤ 2.26 → Lambda‑compatible)
       # -------------------------------------------------
-      # - name: Install onnxruntime (Lambda‑compatible)
-      #   run: |
-      #     pip install \
-      #       onnxruntime==1.16.0 \
-      #       --platform manylinux2014_x86_64 \
-      #       --only-binary=:all: \
-      #       --target deploy \
-      #       --no-cache-dir
+      - name: Install onnxruntime (Lambda‑compatible)
+        run: |
+          pip install \
+            onnxruntime==1.16.0 \
+            --platform manylinux2014_x86_64 \
+            --only-binary=:all: \
+            --target deploy \
+            --no-cache-dir
 
       # -------------------------------------------------
       # 6. Copy source files + JSON config
       # -------------------------------------------------
       - name: Copy application code
         run: |
-          # cp app/main.py app/helper.py app/schema.py app/en_US-lessac-medium.onnx.json deploy/
+          # cp app/main.py app/helper.py app/en_US-lessac-medium.onnx.json deploy/
           cp app/main.py deploy/
 
       # -------------------------------------------------

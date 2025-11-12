@@ -1,5 +1,6 @@
-fastapi
-mangum
-# boto3
-# piper-tts
+# fastapi
+# mangum
 # pydantic
+boto3
+piper-tts
+numpy
