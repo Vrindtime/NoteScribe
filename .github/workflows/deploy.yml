@@ -54,6 +54,11 @@ jobs:
             --only-binary=:all: \
             --target deploy \
             --no-cache-dir
+        
+      - name: Enabling execute permissions for onnxruntime
+        run: |
+          chmod -R 755 deploy/onnxruntime/
+          find deploy -type f -name "*.so" -exec chmod 755 {} \;
 
       # -------------------------------------------------
       # 6. Copy source files + JSON config
