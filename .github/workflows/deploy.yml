@@ -1,4 +1,4 @@
-name: Deploy Note‑Scribe
+name: Deploy Note-Scribe
 
 on:
   push:
@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write # OIDC for AWS
+      id-token: write
 
     steps:
       # -------------------------------------------------
@@ -19,79 +19,63 @@ jobs:
         uses: actions/checkout@v4
 
       # -------------------------------------------------
-      # 2. Set up Python 3.11
+      # 2. Build package in AWS Lambda Docker (Python 3.11)
       # -------------------------------------------------
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      # -------------------------------------------------
-      # 3. Create clean deployment folder
-      # -------------------------------------------------
-      - name: Prepare deployment folder
+      - name: Build Lambda package in Docker
         run: |
           mkdir -p deploy
 
-      # -------------------------------------------------
-      # 4. Install *all* pure‑Python deps (fastapi, mangum, etc.)
-      # -------------------------------------------------
-      - name: Install Python dependencies
-        run: |
-          pip install -r requirements.txt -t deploy \
-          --platform manylinux2014_x86_64 \
-          --only-binary=:all:
+          docker run --rm \
+            -v "$PWD":/var/task \
+            -w /var/task \
+            public.ecr.aws/lambda/python:3.11 \
+            bash -c "
+              # Upgrade pip
+              pip install --upgrade pip
+
+              # Install pure-Python deps from requirements.txt
+              if [ -f requirements.txt ]; then
+                pip install -r requirements.txt -t deploy/
+              fi
+
+              # Install onnxruntime (CPU, Lambda-compatible)
+              pip install onnxruntime==1.16.0 -t deploy/
+
+              # Copy application code
+              cp app/main.py deploy/
+            "
 
       # -------------------------------------------------
-      # 5. Install **onnxruntime** built for Amazon Linux 2
-      #     (manylinux2014 = glibc ≤ 2.26 → Lambda‑compatible)
+      # 3. Fix permissions on .so files (optional but safe)
       # -------------------------------------------------
-      - name: Install onnxruntime (Lambda‑compatible)
+      - name: Fix .so permissions
         run: |
-          pip install \
-            onnxruntime==1.16.0 \
-            --platform manylinux2014_x86_64 \
-            --only-binary=:all: \
-            --target deploy \
-            --no-cache-dir
-        
-      - name: Enabling execute permissions for onnxruntime
-        run: |
-          chmod -R 755 deploy/onnxruntime/
-          find deploy -type f -name "*.so" -exec chmod 755 {} \;
+          find deploy -name "*.so" -exec chmod 755 {} \;
 
       # -------------------------------------------------
-      # 6. Copy source files + JSON config
+      # 4. Clean up bloat
       # -------------------------------------------------
-      - name: Copy application code
-        run: |
-          # cp app/main.py app/helper.py app/en_US-lessac-medium.onnx.json deploy/
-          cp app/main.py deploy/
-
-      # -------------------------------------------------
-      # 7. Strip bloat (dist‑info, __pycache__, tests, .so.debug)
-      # -------------------------------------------------
-      - name: Clean up unnecessary files
+      - name: Clean up
         run: |
           cd deploy
           rm -rf ./*.dist-info */*.dist-info
           find . -type d -name "__pycache__" -exec rm -rf {} +
           find . -type f -name "*.pyc" -delete
-          rm -rf */tests */*.so.debug
+          find . -name "tests" -exec rm -rf {} +
+          rm -rf */boto* */botocore */s3transfer 2>/dev/null || true
 
       # -------------------------------------------------
-      # 8. Create final ZIP (max compression)
+      # 5. Create ZIP
       # -------------------------------------------------
       - name: Create deployment package
         run: |
           cd deploy
           zip -r9 ../note-scribe-deploy.zip . > /dev/null
-          cd ..
           echo "ZIP size:"
-          ls -lh note-scribe-deploy.zip
+          ls -lh ../note-scribe-deploy.zip
 
       # -------------------------------------------------
-      # 9. Configure AWS credentials via OIDC
+      # 6. Configure AWS credentials
       # -------------------------------------------------
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -100,14 +84,14 @@ jobs:
           aws-region: ap-south-1
 
       # -------------------------------------------------
-      # 10. Upload ZIP to S3
+      # 7. Upload to S3
       # -------------------------------------------------
       - name: Upload to S3
         run: |
           aws s3 cp note-scribe-deploy.zip s3://note-scribe/
 
       # -------------------------------------------------
-      # 11. Update Lambda function
+      # 8. Update Lambda
       # -------------------------------------------------
       - name: Update Lambda function
         run: |
