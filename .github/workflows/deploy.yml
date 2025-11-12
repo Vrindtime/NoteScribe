@@ -26,22 +26,17 @@ jobs:
           mkdir -p deploy
 
           docker run --rm \
+            --entrypoint "" \
             -v "$PWD":/var/task \
             -w /var/task \
             public.ecr.aws/lambda/python:3.11 \
             bash -c "
-              # Upgrade pip
               pip install --upgrade pip
 
-              # Install pure-Python deps from requirements.txt
-              if [ -f requirements.txt ]; then
-                pip install -r requirements.txt -t deploy/
-              fi
+              [ -f requirements.txt ] && pip install -r requirements.txt -t deploy/
 
-              # Install onnxruntime (CPU, Lambda-compatible)
               pip install onnxruntime==1.16.0 -t deploy/
 
-              # Copy application code
               cp app/main.py deploy/
             "
 
