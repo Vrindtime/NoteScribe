@@ -1,4 +1,4 @@
-name: ECR Build and Lambda Deployment
+name: ECR Build and Push
 
 on:
   push:
@@ -8,8 +8,8 @@ env:
   # Define standard variables used across both jobs
   AWS_REGION: ap-south-1
   ECR_REPOSITORY: note-scribe-tts
-  LAMBDA_FUNCTION_NAME: note-scribe # Replace with your Lambda function name
-
+  LAMBDA_FUNCTION_NAME: note-scribe
+  
 jobs:
   # ======================================================
   # JOB 1: BUILD DOCKER IMAGE AND PUSH TO ECR
@@ -20,9 +20,9 @@ jobs:
       contents: read
       id-token: write
     
-    # Define outputs this job will pass to subsequent jobs
-    outputs:
-      image_uri: ${{ steps.image_uri_output.outputs.image_uri }}
+    # OUTPUTS section is only needed if you have a subsequent job
+    # outputs:
+    #   image_uri: ${{ steps.image_uri_output.outputs.image_uri }}
 
     steps:
       - name: Checkout repository
@@ -32,7 +32,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }} # ap-south-1
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -41,7 +41,7 @@ jobs:
       - name: Set Image Variables
         id: vars
         run: |
-          # Use the ECR registry URI output from step 3
+          # Use the ECR registry URI output
           echo "ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_ENV
           # Tag the image with the short commit SHA
           echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
@@ -54,44 +54,9 @@ jobs:
         with:
           context: .
           push: true
+          # OPTIONAL: Add platform if using ARM64 Lambda
+          platform: linux/arm64
           # Tags the image with both the commit SHA and 'latest'
           tags: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }},${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
 
-      - name: Output ECR Image URI for next job
-        id: image_uri_output
-        run: |
-          # Set the final output variable
-          echo "image_uri=${{ env.FULL_IMAGE_URI }}" >> $GITHUB_OUTPUT
-
-  # ======================================================
-  # JOB 2: DEPLOY TO LAMBDA
-  # ======================================================
-  deploy_to_lambda:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    
-    # This job MUST run only after the ECR push is complete
-    needs: [build_and_push_ecr]
-
-    steps:
-      - name: Configure AWS credentials (Deploy Job)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Get ECR Image URI from previous job
-        run: |
-          echo "IMAGE_TO_DEPLOY=${{ needs.build_and_push_ecr.outputs.image_uri }}" >> $GITHUB_ENV
-          echo "Image URI received: ${{ needs.build_and_push_ecr.outputs.image_uri }}"
-
-      - name: Update Lambda function code
-        run: |
-          aws lambda update-function-code \
-            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
-            --image-uri ${{ env.IMAGE_TO_DEPLOY }}
-          
-          echo "Lambda function ${{ env.LAMBDA_FUNCTION_NAME }} updated successfully with image:"
-          echo "${{ env.IMAGE_TO_DEPLOY }}"
+      # Removed the image_uri_output step as it's not needed without the second job.
