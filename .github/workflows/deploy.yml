@@ -1,97 +1,97 @@
-name: Deploy Note-Scribe
+name: CI/CD: ECR Build and Lambda Deployment
 
 on:
   push:
     branches: [ main ]
 
+env:
+  # Define standard variables used across both jobs
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: note-scribe-tts
+  LAMBDA_FUNCTION_NAME: note-scribe # Replace with your Lambda function name
+
 jobs:
-  deploy:
+  # ======================================================
+  # JOB 1: BUILD DOCKER IMAGE AND PUSH TO ECR
+  # ======================================================
+  build_and_push_ecr:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
+    
+    # Define outputs this job will pass to subsequent jobs
+    outputs:
+      image_uri: ${{ steps.image_uri_output.outputs.image_uri }}
 
     steps:
-      # -------------------------------------------------
-      # 1. Checkout code
-      # -------------------------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # -------------------------------------------------
-      # 2. Build package in AWS Lambda Docker (Python 3.11)
-      # -------------------------------------------------
-      - name: Build Lambda package in Docker
-        run: |
-          mkdir -p deploy
-
-          docker run --rm \
-            --entrypoint "" \
-            -v "$PWD":/var/task \
-            -w /var/task \
-            public.ecr.aws/lambda/python:3.11 \
-            bash -c "
-              pip install --upgrade pip
-
-              [ -f requirements.txt ] && pip install -r requirements.txt -t deploy/
-
-              pip install onnxruntime==1.16.0 -t deploy/
-
-              cp app/main.py deploy/
-            "
-
-      # -------------------------------------------------
-      # 3. Fix permissions on .so files (optional but safe)
-      # -------------------------------------------------
-      - name: Fix .so permissions
-        run: |
-          find deploy -name "*.so" -exec chmod 755 {} \;
-
-      # -------------------------------------------------
-      # 4. Clean up bloat
-      # -------------------------------------------------
-      - name: Clean up
-        run: |
-          cd deploy
-          rm -rf ./*.dist-info */*.dist-info
-          find . -type d -name "__pycache__" -exec rm -rf {} +
-          find . -type f -name "*.pyc" -delete
-          find . -name "tests" -exec rm -rf {} +
-          rm -rf */boto* */botocore */s3transfer 2>/dev/null || true
-
-      # -------------------------------------------------
-      # 5. Create ZIP
-      # -------------------------------------------------
-      - name: Create deployment package
-        run: |
-          cd deploy
-          zip -r9 ../note-scribe-deploy.zip . > /dev/null
-          echo "ZIP size:"
-          ls -lh ../note-scribe-deploy.zip
-
-      # -------------------------------------------------
-      # 6. Configure AWS credentials
-      # -------------------------------------------------
-      - name: Configure AWS credentials
+      - name: Configure AWS credentials (Build Job)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
-          aws-region: ap-south-1
+          aws-region: ${{ env.AWS_REGION }}
 
-      # -------------------------------------------------
-      # 7. Upload to S3
-      # -------------------------------------------------
-      - name: Upload to S3
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set Image Variables
+        id: vars
         run: |
-          aws s3 cp note-scribe-deploy.zip s3://note-scribe/
+          # Use the ECR registry URI output from step 3
+          echo "ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_ENV
+          # Tag the image with the short commit SHA
+          echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_ENV
+          # Calculate the full image URI
+          FULL_IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          echo "FULL_IMAGE_URI=$FULL_IMAGE_URI" >> $GITHUB_ENV
 
-      # -------------------------------------------------
-      # 8. Update Lambda
-      # -------------------------------------------------
-      - name: Update Lambda function
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          # Tags the image with both the commit SHA and 'latest'
+          tags: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }},${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
+
+      - name: Output ECR Image URI for next job
+        id: image_uri_output
+        run: |
+          # Set the final output variable
+          echo "image_uri=${{ env.FULL_IMAGE_URI }}" >> $GITHUB_OUTPUT
+
+  # ======================================================
+  # JOB 2: DEPLOY TO LAMBDA
+  # ======================================================
+  deploy_to_lambda:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    
+    # This job MUST run only after the ECR push is complete
+    needs: [build_and_push_ecr]
+
+    steps:
+      - name: Configure AWS credentials (Deploy Job)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get ECR Image URI from previous job
+        run: |
+          echo "IMAGE_TO_DEPLOY=${{ needs.build_and_push_ecr.outputs.image_uri }}" >> $GITHUB_ENV
+          echo "Image URI received: ${{ needs.build_and_push_ecr.outputs.image_uri }}"
+
+      - name: Update Lambda function code
         run: |
           aws lambda update-function-code \
-            --function-name note-scribe \
-            --s3-bucket note-scribe \
-            --s3-key note-scribe-deploy.zip \
-            --publish
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+            --image-uri ${{ env.IMAGE_TO_DEPLOY }}
+          
+          echo "Lambda function ${{ env.LAMBDA_FUNCTION_NAME }} updated successfully with image:"
+          echo "${{ env.IMAGE_TO_DEPLOY }}"
