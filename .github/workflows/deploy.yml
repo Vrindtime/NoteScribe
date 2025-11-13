@@ -1,4 +1,4 @@
-name: CI/CD: ECR Build and Lambda Deployment
+name: ECR Build and Lambda Deployment
 
 on:
   push:
