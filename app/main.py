@@ -67,6 +67,18 @@ def ensure_model_loaded() -> PiperVoice:
 # Lambda entry point
 # ----------------------------------------------------------------------
 def handler(event, context):
+    
+    if event.get("httpMethod") == "OPTIONS":
+        return {
+            "statusCode": 200,
+            "headers": {
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Allow-Methods": "POST, OPTIONS"
+            },
+            "body": ""
+        }
+
     # ---- 1. Load model (once per container) ----
     piper_voice = ensure_model_loaded()
 
