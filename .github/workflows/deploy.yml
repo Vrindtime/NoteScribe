@@ -20,9 +20,9 @@ jobs:
       contents: read
       id-token: write
     
-    # OUTPUTS section is only needed if you have a subsequent job
-    # outputs:
-    #   image_uri: ${{ steps.image_uri_output.outputs.image_uri }}
+    # 🌟 FIX 1: Define the job's outputs block to expose the ECR URI
+    outputs:
+      image_uri: ${{ steps.image_uri_output.outputs.image_uri }}
 
     steps:
       - name: Checkout repository
@@ -60,10 +60,9 @@ jobs:
       - name: Output ECR Image URI for next job
         id: image_uri_output
         run: |
-          # Set the final output variable
+          # Set the final output variable (now correctly referenced by the job output above)
           echo "image_uri=${{ env.FULL_IMAGE_URI }}" >> $GITHUB_OUTPUT
 
-      # Removed the image_uri_output step as it's not needed without the second job.
   # ======================================================
   # JOB 2: DEPLOY TO LAMBDA
   # ======================================================
@@ -85,10 +84,14 @@ jobs:
 
       - name: Get ECR Image URI from previous job
         run: |
-          echo "IMAGE_TO_DEPLOY=${{ needs.build_and_push_ecr.outputs.image_uri }}" >> $GITHUB_ENV
-          echo "Image URI received: ${{ needs.build_and_push_ecr.outputs.image_uri }}"
+          # 🌟 FIX 2: Correctly retrieve the output variable 'image_uri' from the previous job
+          DEPLOY_URI="${{ needs.build_and_push_ecr.outputs.image_uri }}"
+          echo "IMAGE_TO_DEPLOY=$DEPLOY_URI" >> $GITHUB_ENV
+          echo "Image URI received: $DEPLOY_URI"
+
       - name: Update Lambda function code
         run: |
+          # Use the environment variable set in the previous step
           aws lambda update-function-code \
             --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
             --image-uri ${{ env.IMAGE_TO_DEPLOY }}
