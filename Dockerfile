@@ -5,6 +5,12 @@ FROM public.ecr.aws/lambda/python:3.12
 # 2. Set the working directory
 # LAMBDA_TASK_ROOT is where Lambda expects your application code.
 WORKDIR ${LAMBDA_TASK_ROOT}
+
+# For AL2023 (which 3.12 uses), we use 'dnf groupinstall'
+RUN yum -y update && \ 
+    yum -y install gcc gcc-c++ python3-devel && \
+    yum clean all
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
