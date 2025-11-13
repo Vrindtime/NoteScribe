@@ -48,12 +48,12 @@ Infra and deployment focused on simplicity and reliability:
   - Store large model assets (e.g., `model.onnx`) in a versioned S3 bucket.
   - Download to `/tmp` or memory on cold start; cache in the container’s runtime where possible.
 
-- Keep‑Warm → Uptime Robot:
-  - A health endpoint is pinged every 5 minutes to reduce cold starts.
-
 - Frontend → Vercel:
   - A simple static HTML page and minimal JavaScript fetch the API and play audio.
   - Easy to update and share.
+ 
+- Keep‑Warm → Uptime Robot [TODO]:
+  - A health endpoint is pinged every 5 minutes to reduce cold starts.
 
 Typical request flow:
 You (frontend on Vercel) → API Gateway / Lambda URL → Lambda container (loads model from S3 if needed, calls Piper) → return WAV/stream.
@@ -66,10 +66,6 @@ Core
 - piper-tts: Piper models and synthesis runtime.
 - onnxruntime: Inference backend for Piper models (runtime-specific).
 - Python 3.x: Orchestration, HTTP server, and tooling.
-
-HTTP/API
-- fastapi: Minimal HTTP API to accept text and return synthesized speech.
-- uvicorn: ASGI server inside the container to serve FastAPI efficiently.
 
 AWS
 - boto3: Fetch ONNX model from S3 at cold start and manage S3 interactions.
@@ -84,10 +80,9 @@ Dev/Ops
 
 Why these?
 - Piper + onnxruntime do the high-quality TTS.
-- FastAPI + uvicorn give a tiny, fast HTTP layer for Lambda containers and ping.
 - boto3 handles large model download at startup without bundling it into the image.
 - Docker + GitHub Actions + ECR provide a simple, repeatable deployment pipeline.
-- Uptime Robot keeps the Lambda warm for snappy responses.
+- Uptime Robot keeps the Lambda warm for snappy responses.(To be Implemented)
 
 ---
 
@@ -122,10 +117,6 @@ curl -X 'POST' \
   "speed": 0.8
 }'
 - Response: audio/wav
-
-Ping
-- GET /ping → 200 OK
-- "message": "Pinged Successfully"
 
 Adjust to your actual routes if different.
 
