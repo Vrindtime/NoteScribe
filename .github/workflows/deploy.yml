@@ -54,8 +54,6 @@ jobs:
         with:
           context: .
           push: true
-          # OPTIONAL: Add platform if using ARM64 Lambda
-          platforms: linux/arm64
           # Tags the image with both the commit SHA and 'latest'
           tags: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }},${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
 
