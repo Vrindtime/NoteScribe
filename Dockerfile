@@ -1,7 +1,10 @@
-FROM python:3.9-slim-buster
+# 1. Use the official AWS Lambda Python 3.12 Base Image (AL2023)
+# This includes the RIC and is optimized for Lambda.
+FROM public.ecr.aws/lambda/python:3.12
 
-WORKDIR /app
-
+# 2. Set the working directory
+# LAMBDA_TASK_ROOT is where Lambda expects your application code.
+WORKDIR ${LAMBDA_TASK_ROOT}
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -9,4 +12,9 @@ COPY app/ .
 
 EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Set the ENTRYPOINT to the Python module for the RIC
+# This tells the container what executable to run first.
+ENTRYPOINT [ "python", "-m", "awslambdaric" ]
+
+# CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD [ "app.main.handler" ]
