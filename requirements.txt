@@ -1,7 +1,7 @@
-fastapi
-uvicorn[standard]
-mangum
-pydantic
+# fastapi
+# uvicorn[standard]
+# mangum
+# pydantic
 boto3
 numpy<2.0.0
 onnxruntime

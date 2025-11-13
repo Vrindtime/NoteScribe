@@ -57,4 +57,41 @@ jobs:
           # Tags the image with both the commit SHA and 'latest'
           tags: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }},${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest
 
+      - name: Output ECR Image URI for next job
+        id: image_uri_output
+        run: |
+          # Set the final output variable
+          echo "image_uri=${{ env.FULL_IMAGE_URI }}" >> $GITHUB_OUTPUT
+
       # Removed the image_uri_output step as it's not needed without the second job.
+  # ======================================================
+  # JOB 2: DEPLOY TO LAMBDA
+  # ======================================================
+  deploy_to_lambda:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    
+    # This job MUST run only after the ECR push is complete
+    needs: [build_and_push_ecr]
+
+    steps:
+      - name: Configure AWS credentials (Deploy Job)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get ECR Image URI from previous job
+        run: |
+          echo "IMAGE_TO_DEPLOY=${{ needs.build_and_push_ecr.outputs.image_uri }}" >> $GITHUB_ENV
+          echo "Image URI received: ${{ needs.build_and_push_ecr.outputs.image_uri }}"
+      - name: Update Lambda function code
+        run: |
+          aws lambda update-function-code \
+            --function-name ${{ env.LAMBDA_FUNCTION_NAME }} \
+            --image-uri ${{ env.IMAGE_TO_DEPLOY }}
+          
+          echo "Lambda function ${{ env.LAMBDA_FUNCTION_NAME }} updated successfully with image:"
+          echo "${{ env.IMAGE_TO_DEPLOY }}"
