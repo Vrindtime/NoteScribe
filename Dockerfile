@@ -7,9 +7,9 @@ FROM public.ecr.aws/lambda/python:3.12
 WORKDIR ${LAMBDA_TASK_ROOT}
 
 # For AL2023 (which 3.12 uses), we use 'dnf groupinstall'
-RUN yum -y update && \ 
-    yum -y install gcc gcc-c++ python3-devel && \
-    yum clean all
+RUN dnf -y update && \ 
+    dnf -y install gcc gcc-c++ python3-devel && \ 
+    dnf clean all
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
