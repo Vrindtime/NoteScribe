@@ -68,6 +68,14 @@ def ensure_model_loaded() -> PiperVoice:
 # ----------------------------------------------------------------------
 def handler(event, context):
 
+    # === 2. PING MODE (WARM-UP) ===
+    if payload.get("text") == "vrindtime-ping-uptime-warm":
+        return {
+            "statusCode": 200,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"status": "pinged successful", "warm": True})
+        }
+    
     if event.get("httpMethod") == "OPTIONS":
         return {
             "statusCode": 200,
