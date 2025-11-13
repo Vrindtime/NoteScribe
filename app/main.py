@@ -67,7 +67,7 @@ def ensure_model_loaded() -> PiperVoice:
 # Lambda entry point
 # ----------------------------------------------------------------------
 def handler(event, context):
-    
+
     if event.get("httpMethod") == "OPTIONS":
         return {
             "statusCode": 200,
@@ -167,10 +167,6 @@ def handler(event, context):
         "headers": {
         "Content-Type": "audio/wav",
         "Content-Disposition": 'attachment; filename="speech.wav"',
-        # === CORS HEADERS ===
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "Content-Type",
-        "Access-Control-Allow-Methods": "POST, OPTIONS"
     },
         "body": base64.b64encode(audio_bytes).decode("utf-8"),
         "isBase64Encoded": True,
