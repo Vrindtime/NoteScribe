@@ -70,19 +70,31 @@ def handler(event, context):
     # ---- 1. Load model (once per container) ----
     piper_voice = ensure_model_loaded()
 
-    # ---- 2. Parse & validate payload ----
-    text = event.get("text")
+    # === PARSE FROM API GATEWAY PROXY ===
+    try:
+        body = event.get("body")
+        if body is None:
+            raise ValueError("Empty request body")
+        if isinstance(body, str):
+            payload = json.loads(body)
+        else:
+            payload = body
+    except json.JSONDecodeError:
+        raise ValueError("Invalid JSON in request body")
+    except Exception as e:
+        raise ValueError(f"Failed to parse body: {e}")
+
+    text = payload.get("text")
     if not text or not isinstance(text, str):
         raise ValueError("Missing or invalid 'text' field (must be a non-empty string)")
 
-    # speed can come as string or number
-    speed_raw = event.get("speed", 0.8)
+    speed_raw = payload.get("speed", 0.8)
     try:
         speed = float(speed_raw)
     except (ValueError, TypeError):
         raise ValueError(f"'speed' must be a number, got {speed_raw!r}")
 
-    pace = event.get("pace", "writing")
+    pace = payload.get("pace", "writing")
 
     # ---- 3. Text → words → chunks ----
     words = expand_hyphens(text)
