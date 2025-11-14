@@ -52,8 +52,8 @@ Infra and deployment focused on simplicity and reliability:
   - A simple static HTML page and minimal JavaScript fetch the API and play audio.
   - Easy to update and share.
  
-- Keep‑Warm → Uptime Robot [TODO]:
-  - A health endpoint is pinged every 5 minutes to reduce cold starts.
+- Keep‑Warm → Uptime Robot:
+  - A health endpoint is pinged every 15 minutes to reduce cold starts.
 
 Typical request flow:
 You (frontend on Vercel) → API Gateway / Lambda URL → Lambda container (loads model from S3 if needed, calls Piper) → return WAV/stream.
@@ -101,6 +101,7 @@ Model loading
 Keep‑warm
 - Expose a `/health` or `/warm` endpoint that returns 200 OK quickly.
 - Configure Uptime Robot to ping it every 5 minutes.
+- *Uptime*: [Uptime Robot](https://stats.uptimerobot.com/V7Avx6GTYJ)
 
 ---
 
